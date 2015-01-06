@@ -76,15 +76,14 @@
 #define RF69_TX_LIMIT_MS   1000
 #define RF69_FSTEP  61.03515625 // == FXOSC/2^19 = 32mhz/2^19 (p13 in DS)
 
-extern volatile uint8_t DATA[RF69_MAX_DATA_LEN]; // recv/xmit buf, including hdr & crc bytes
-extern volatile uint8_t DATALEN;
-extern volatile uint8_t SENDERID;
-extern volatile uint8_t TARGETID; // should match _address
-extern volatile uint8_t PAYLOADLEN;
-extern volatile uint8_t ACK_REQUESTED;
-extern volatile uint8_t ACK_RECEIVED; // should be polled immediately after sending a packet with ACK request
-extern volatile int RSSI; // most accurate RSSI during reception (closest to the reception)
-extern volatile uint8_t _mode; // should be protected?
+extern volatile uint8_t rfm69_DATA[RF69_MAX_DATA_LEN]; // recv/xmit buf, including hdr & crc bytes
+extern volatile uint8_t rfm69_DATALEN;
+extern volatile uint8_t rfm69_SENDERID;
+extern volatile uint8_t rfm69_TARGETID; // should match _address
+extern volatile uint8_t rfm69_PAYLOADLEN;
+extern volatile uint8_t rfm69_ACK_REQUESTED;
+extern volatile uint8_t rfm69_ACK_RECEIVED; // should be polled immediately after sending a packet with ACK request
+extern volatile int rfm69_RSSI; // most accurate RSSI during reception (closest to the reception)
 
 bool rfm69_initialize(uint8_t freqBand, uint8_t ID, uint8_t networkID);
 void rfm69_setAddress(uint8_t addr);

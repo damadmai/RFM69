@@ -32,27 +32,27 @@
 #include <RFM69registers.h>
 #include <SPI.h>
 
-volatile uint8_t DATA[RF69_MAX_DATA_LEN];
-volatile uint8_t _mode = RF69_MODE_STANDBY; // current transceiver state
-volatile uint8_t DATALEN;
-volatile uint8_t SENDERID;
-volatile uint8_t TARGETID;      // should match _address
-volatile uint8_t PAYLOADLEN;
-volatile uint8_t ACK_REQUESTED;
-volatile uint8_t ACK_RECEIVED;  // should be polled immediately after sending a packet with ACK request
-volatile int RSSI;              // most accurate RSSI during reception (closest to the reception)
+volatile uint8_t rfm69_DATA[RF69_MAX_DATA_LEN];
+volatile uint8_t rfm69_DATALEN;
+volatile uint8_t rfm69_SENDERID;
+volatile uint8_t rfm69_TARGETID;      // should match _address
+volatile uint8_t rfm69_PAYLOADLEN;
+volatile uint8_t rfm69_ACK_REQUESTED;
+volatile uint8_t rfm69_ACK_RECEIVED;  // should be polled immediately after sending a packet with ACK request
+volatile int rfm69_RSSI;              // most accurate RSSI during reception (closest to the reception)
 
 // internal private variables and functions
 void _rfm69_isr0(void);
 void _rfm69_interruptHandler(void);
 void _rfm69_sendFrame(uint8_t toAddress, const void* buffer, uint8_t size, bool requestACK, bool sendACK);
 
-uint8_t _address;
-bool _promiscuousMode = false;
-uint8_t _powerLevel = 31;
-bool _isRFM69HW = false;
-uint8_t _SPCR;
-uint8_t _SPSR;
+static volatile uint8_t _mode = RF69_MODE_STANDBY; // current transceiver state
+static uint8_t _address;
+static bool _promiscuousMode = false;
+static uint8_t _powerLevel = 31;
+static bool _isRFM69HW = false;
+static uint8_t _SPCR;
+static uint8_t _SPSR;
 
 void _rfm69_receiveBegin(void);
 void _rfm69_setMode(uint8_t mode);
@@ -198,7 +198,7 @@ void rfm69_setPowerLevel(uint8_t powerLevel)
 
 bool rfm69_canSend(void)
 {
-  if (_mode == RF69_MODE_RX && PAYLOADLEN == 0 && rfm69_readRSSI(false) < CSMA_LIMIT) // if signal stronger than -100dBm is detected assume channel activity
+  if (_mode == RF69_MODE_RX && rfm69_PAYLOADLEN == 0 && rfm69_readRSSI(false) < CSMA_LIMIT) // if signal stronger than -100dBm is detected assume channel activity
   {
     _rfm69_setMode(RF69_MODE_STANDBY);
     return true;
@@ -242,24 +242,24 @@ bool rfm69_sendWithRetry(uint8_t toAddress, const void* buffer, uint8_t bufferSi
 // should be polled immediately after sending a packet with ACK request
 bool rfm69_ACKReceived(uint8_t fromNodeID) {
   if (rfm69_receiveDone())
-    return (SENDERID == fromNodeID || fromNodeID == RF69_BROADCAST_ADDR) && ACK_RECEIVED;
+    return (rfm69_SENDERID == fromNodeID || fromNodeID == RF69_BROADCAST_ADDR) && rfm69_ACK_RECEIVED;
   return false;
 }
 
 // check whether an ACK was requested in the last received packet (non-broadcasted packet)
 bool rfm69_ACKRequested(void) {
-  return ACK_REQUESTED && (TARGETID != RF69_BROADCAST_ADDR);
+  return rfm69_ACK_REQUESTED && (rfm69_TARGETID != RF69_BROADCAST_ADDR);
 }
 
 // should be called immediately after reception in case sender wants ACK
 void rfm69_sendACK(const void* buffer, uint8_t bufferSize) {
-  uint8_t sender = SENDERID;
-  int _RSSI = RSSI; // save payload received RSSI value
+  uint8_t sender = rfm69_SENDERID;
+  int _RSSI = rfm69_RSSI; // save payload received RSSI value
   rfm69_writeReg(REG_PACKETCONFIG2, (rfm69_readReg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
   unsigned long now = millis();
   while (!rfm69_canSend() && millis()-now < RF69_CSMA_LIMIT_MS) rfm69_receiveDone();
   _rfm69_sendFrame(sender, buffer, bufferSize, false, true);
-  RSSI = _RSSI; // restore payload RSSI
+  rfm69_RSSI = _RSSI; // restore payload RSSI
 }
 
 void _rfm69_sendFrame(uint8_t toAddress, const void* buffer, uint8_t bufferSize, bool requestACK, bool sendACK)
@@ -298,50 +298,50 @@ void _rfm69_sendFrame(uint8_t toAddress, const void* buffer, uint8_t bufferSize,
 void _rfm69_interruptHandler(void) {
   if (_mode == RF69_MODE_RX && (rfm69_readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY))
   {
-    //RSSI = rfm69_readRSSI();
+    //_rfm69_RSSI = rfm69_readRSSI();
     _rfm69_setMode(RF69_MODE_STANDBY);
     _rfm69_select();
     SPI.transfer(REG_FIFO & 0x7f);
-    PAYLOADLEN = SPI.transfer(0);
-    PAYLOADLEN = PAYLOADLEN > 66 ? 66 : PAYLOADLEN; // precaution
-    TARGETID = SPI.transfer(0);
-    if(!(_promiscuousMode || TARGETID == _address || TARGETID == RF69_BROADCAST_ADDR) // match this node's address, or broadcast address or anything in promiscuous mode
-       || PAYLOADLEN < 3) // address situation could receive packets that are malformed and don't fit this libraries extra fields
+    rfm69_PAYLOADLEN = SPI.transfer(0);
+    rfm69_PAYLOADLEN = rfm69_PAYLOADLEN > 66 ? 66 : rfm69_PAYLOADLEN; // precaution
+    rfm69_TARGETID = SPI.transfer(0);
+    if(!(_promiscuousMode || rfm69_TARGETID == _address || rfm69_TARGETID == RF69_BROADCAST_ADDR) // match this node's address, or broadcast address or anything in promiscuous mode
+       || rfm69_PAYLOADLEN < 3) // address situation could receive packets that are malformed and don't fit this libraries extra fields
     {
-      PAYLOADLEN = 0;
+      rfm69_PAYLOADLEN = 0;
       _rfm69_unselect();
       _rfm69_receiveBegin();
       return;
     }
 
-    DATALEN = PAYLOADLEN - 3;
-    SENDERID = SPI.transfer(0);
+    rfm69_DATALEN = rfm69_PAYLOADLEN - 3;
+    rfm69_SENDERID = SPI.transfer(0);
     uint8_t CTLbyte = SPI.transfer(0);
 
-    ACK_RECEIVED = CTLbyte & 0x80; // extract ACK-received flag
-    ACK_REQUESTED = CTLbyte & 0x40; // extract ACK-requested flag
+    rfm69_ACK_RECEIVED = CTLbyte & 0x80; // extract ACK-received flag
+    rfm69_ACK_REQUESTED = CTLbyte & 0x40; // extract ACK-requested flag
 
-    for (uint8_t i = 0; i < DATALEN; i++)
+    for (uint8_t i = 0; i < rfm69_DATALEN; i++)
     {
-      DATA[i] = SPI.transfer(0);
+      rfm69_DATA[i] = SPI.transfer(0);
     }
-    if (DATALEN<RF69_MAX_DATA_LEN) DATA[DATALEN] = 0; // add null at end of string
+    if (rfm69_DATALEN<RF69_MAX_DATA_LEN) rfm69_DATA[rfm69_DATALEN] = 0; // add null at end of string
     _rfm69_unselect();
     _rfm69_setMode(RF69_MODE_RX);
   }
-  RSSI = rfm69_readRSSI(false);
+  rfm69_RSSI = rfm69_readRSSI(false);
 }
 
 void _rfm69_isr0(void) { _rfm69_interruptHandler(); }
 
 void _rfm69_receiveBegin(void) {
-  DATALEN = 0;
-  SENDERID = 0;
-  TARGETID = 0;
-  PAYLOADLEN = 0;
-  ACK_REQUESTED = 0;
-  ACK_RECEIVED = 0;
-  RSSI = 0;
+  rfm69_DATALEN = 0;
+  rfm69_SENDERID = 0;
+  rfm69_TARGETID = 0;
+  rfm69_PAYLOADLEN = 0;
+  rfm69_ACK_REQUESTED = 0;
+  rfm69_ACK_RECEIVED = 0;
+  rfm69_RSSI = 0;
   if (rfm69_readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY)
     rfm69_writeReg(REG_PACKETCONFIG2, (rfm69_readReg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
   rfm69_writeReg(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_01); // set DIO0 to "PAYLOADREADY" in receive mode
@@ -352,7 +352,7 @@ bool rfm69_receiveDone(void) {
 //ATOMIC_BLOCK(ATOMIC_FORCEON)
 //{
   noInterrupts(); // re-enabled in _rfm69_unselect() via _rfm69_setMode() or via _rfm69_receiveBegin()
-  if (_mode == RF69_MODE_RX && PAYLOADLEN>0)
+  if (_mode == RF69_MODE_RX && rfm69_PAYLOADLEN>0)
   {
     _rfm69_setMode(RF69_MODE_STANDBY); // enables interrupts
     return true;
