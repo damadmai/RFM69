@@ -80,8 +80,7 @@ class RFM69 {
     static volatile int RSSI; // most accurate RSSI during reception (closest to the reception)
     static volatile uint8_t _mode; // should be protected?
 
-    RFM69(bool isRFM69HW=false, uint8_t interruptNum=RF69_IRQ_NUM) {
-      _interruptNum = interruptNum;
+    RFM69(bool isRFM69HW=false) {
       _mode = RF69_MODE_STANDBY;
       _promiscuousMode = false;
       _powerLevel = 31;
@@ -121,7 +120,6 @@ class RFM69 {
     void sendFrame(uint8_t toAddress, const void* buffer, uint8_t size, bool requestACK=false, bool sendACK=false);
 
     static RFM69* selfPointer;
-    uint8_t _interruptNum;
     uint8_t _address;
     bool _promiscuousMode;
     uint8_t _powerLevel;
