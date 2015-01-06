@@ -86,7 +86,7 @@ bool RFM69::initialize(uint8_t freqBand, uint8_t nodeID, uint8_t networkID)
     {255, 0}
   };
 
-  pinMode(RF69_SPI_CS, OUTPUT);
+  DDR(RF69_CS_PORT) |= (1<<RF69_CS);
   SPI.begin();
 
   do writeReg(REG_SYNCVALUE1, 0xaa); while (readReg(REG_SYNCVALUE1) != 0xaa);
@@ -274,7 +274,7 @@ void RFM69::sendFrame(uint8_t toAddress, const void* buffer, uint8_t bufferSize,
   /* no need to wait for transmit mode to be ready since its handled by the radio */
   setMode(RF69_MODE_TX);
   unsigned long txStart = millis();
-  while (digitalRead(RF69_IRQ_PIN) == 0 && millis()-txStart < RF69_TX_LIMIT_MS); // wait for DIO0 to turn HIGH signalling transmission finish
+  while (!(PIN(RF69_IRQ_PORT) & (1<<RF69_IRQ)) && millis()-txStart < RF69_TX_LIMIT_MS); // wait for DIO0 to turn HIGH signalling transmission finish
   //while (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PACKETSENT == 0x00); // wait for ModeReady
   setMode(RF69_MODE_STANDBY);
 }
@@ -407,12 +407,12 @@ void RFM69::select() {
   SPI.setDataMode(SPI_MODE0);
   SPI.setBitOrder(MSBFIRST);
   SPI.setClockDivider(SPI_CLOCK_DIV4); // decided to slow down from DIV2 after SPI stalling in some instances, especially visible on mega1284p when RFM69 and FLASH chip both present
-  digitalWrite(RF69_SPI_CS, LOW);
+  PORT(RF69_CS_PORT) &= ~(1<<RF69_CS);
 }
 
 // UNselect the transceiver chip
 void RFM69::unselect() {
-  digitalWrite(RF69_SPI_CS, HIGH);
+  PORT(RF69_CS_PORT) |= (1<<RF69_CS);
   // restore SPI settings to what they were before talking to RFM69
   SPCR = _SPCR;
   SPSR = _SPSR;
