@@ -280,8 +280,6 @@ void RFM69::sendFrame(uint8_t toAddress, const void* buffer, uint8_t bufferSize,
 }
 
 void RFM69::interruptHandler() {
-  //pinMode(4, OUTPUT);
-  //digitalWrite(4, 1);
   if (_mode == RF69_MODE_RX && (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY))
   {
     //RSSI = readRSSI();
@@ -297,7 +295,6 @@ void RFM69::interruptHandler() {
       PAYLOADLEN = 0;
       unselect();
       receiveBegin();
-      //digitalWrite(4, 0);
       return;
     }
 
@@ -317,7 +314,6 @@ void RFM69::interruptHandler() {
     setMode(RF69_MODE_RX);
   }
   RSSI = readRSSI();
-  //digitalWrite(4, 0);
 }
 
 void RFM69::isr0() { selfPointer->interruptHandler(); }
