@@ -86,25 +86,25 @@ extern volatile uint8_t ACK_RECEIVED; // should be polled immediately after send
 extern volatile int RSSI; // most accurate RSSI during reception (closest to the reception)
 extern volatile uint8_t _mode; // should be protected?
 
-bool rfm69_initialize(uint8_t freqBand, uint8_t ID, uint8_t networkID=1);
+bool rfm69_initialize(uint8_t freqBand, uint8_t ID, uint8_t networkID);
 void rfm69_setAddress(uint8_t addr);
 void rfm69_setNetwork(uint8_t networkID);
 bool rfm69_canSend(void);
-void rfm69_send(uint8_t toAddress, const void* buffer, uint8_t bufferSize, bool requestACK=false);
-bool rfm69_sendWithRetry(uint8_t toAddress, const void* buffer, uint8_t bufferSize, uint8_t retries=2, uint8_t retryWaitTime=40); // 40ms roundtrip req for  61byte packets
+void rfm69_send(uint8_t toAddress, const void* buffer, uint8_t bufferSize, bool requestACK);
+bool rfm69_sendWithRetry(uint8_t toAddress, const void* buffer, uint8_t bufferSize, uint8_t retries, uint8_t retryWaitTime); // 40ms roundtrip req for  61byte packets
 bool rfm69_receiveDone(void);
 bool rfm69_ACKReceived(uint8_t fromNodeID);
 bool rfm69_ACKRequested(void);
-void rfm69_sendACK(const void* buffer = "", uint8_t bufferSize=0);
+void rfm69_sendACK(const void* buffer, uint8_t bufferSize);
 uint32_t rfm69_getFrequency(void);
 void rfm69_setFrequency(uint32_t freqHz);
 void rfm69_encrypt(const char* key);
-int rfm69_readRSSI(bool forceTrigger=false);
-void rfm69_promiscuous(bool onOff=true);
-void rfm69_setHighPower(bool onOFF=true); // have to call it after initialize for RFM69HW
+int rfm69_readRSSI(bool forceTrigger);
+void rfm69_promiscuous(bool onOff);
+void rfm69_setHighPower(bool onOFF); // have to call it after initialize for RFM69HW
 void rfm69_setPowerLevel(uint8_t level); // reduce/increase transmit power level
 void rfm69_sleep(void);
-uint8_t rfm69_readTemperature(uint8_t calFactor=0); // get CMOS temperature (8bit)
+uint8_t rfm69_readTemperature(uint8_t calFactor); // get CMOS temperature (8bit)
 void rfm69_rcCalibration(void); // calibrate the internal RC oscillator for use in wide temperature variations - see datasheet section [4.3.5. RC Timer Accuracy]
 
 // allow hacking registers by making these public

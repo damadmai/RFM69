@@ -45,7 +45,7 @@ volatile int RSSI;              // most accurate RSSI during reception (closest 
 // internal private variables and functions
 void _rfm69_isr0(void);
 void _rfm69_interruptHandler(void);
-void _rfm69_sendFrame(uint8_t toAddress, const void* buffer, uint8_t size, bool requestACK=false, bool sendACK=false);
+void _rfm69_sendFrame(uint8_t toAddress, const void* buffer, uint8_t size, bool requestACK, bool sendACK);
 
 uint8_t _address;
 bool _promiscuousMode = false;
@@ -198,7 +198,7 @@ void rfm69_setPowerLevel(uint8_t powerLevel)
 
 bool rfm69_canSend(void)
 {
-  if (_mode == RF69_MODE_RX && PAYLOADLEN == 0 && rfm69_readRSSI() < CSMA_LIMIT) // if signal stronger than -100dBm is detected assume channel activity
+  if (_mode == RF69_MODE_RX && PAYLOADLEN == 0 && rfm69_readRSSI(false) < CSMA_LIMIT) // if signal stronger than -100dBm is detected assume channel activity
   {
     _rfm69_setMode(RF69_MODE_STANDBY);
     return true;
@@ -329,7 +329,7 @@ void _rfm69_interruptHandler(void) {
     _rfm69_unselect();
     _rfm69_setMode(RF69_MODE_RX);
   }
-  RSSI = rfm69_readRSSI();
+  RSSI = rfm69_readRSSI(false);
 }
 
 void _rfm69_isr0(void) { _rfm69_interruptHandler(); }
