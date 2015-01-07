@@ -116,6 +116,5 @@ void rfm69_rcCalibration(void); // calibrate the internal RC oscillator for use 
 // allow hacking registers by making these public
 uint8_t rfm69_readReg(uint8_t addr);
 void rfm69_writeReg(uint8_t addr, uint8_t val);
-void rfm69_readAllRegs(void);
 
 #endif

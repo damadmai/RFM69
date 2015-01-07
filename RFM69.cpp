@@ -235,11 +235,9 @@ bool rfm69_sendWithRetry(uint8_t toAddress, const void* buffer, uint8_t bufferSi
     {
       if (rfm69_ACKReceived(toAddress))
       {
-        //Serial.print(" ~ms:"); Serial.print(millis() - sentTime);
         return true;
       }
     }
-    //Serial.print(" RETRY#"); Serial.println(i+1);
   }
   return false;
 }
@@ -468,27 +466,6 @@ void rfm69_setHighPower(bool onOff) {
 void _rfm69_setHighPowerRegs(bool onOff) {
   rfm69_writeReg(REG_TESTPA1, onOff ? 0x5D : 0x55);
   rfm69_writeReg(REG_TESTPA2, onOff ? 0x7C : 0x70);
-}
-
-// for debugging
-void rfm69_readAllRegs(void)
-{
-  uint8_t regVal;
-
-  for (uint8_t regAddr = 1; regAddr <= 0x4F; regAddr++)
-  {
-    _rfm69_select();
-    _rfm69_transfer(regAddr & 0x7F); // send address + r/w bit
-    regVal = _rfm69_transfer(0);
-    _rfm69_unselect();
-
-    Serial.print(regAddr, HEX);
-    Serial.print(" - ");
-    Serial.print(regVal,HEX);
-    Serial.print(" - ");
-    Serial.println(regVal,BIN);
-  }
-  _rfm69_unselect();
 }
 
 uint8_t rfm69_readTemperature(uint8_t calFactor) // returns centigrade
