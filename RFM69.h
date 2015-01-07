@@ -66,7 +66,7 @@
 
 #define CSMA_LIMIT              -90 // upper RX signal sensitivity threshold in dBm for carrier sense access
 #define RF69_MODE_SLEEP         0 // XTAL OFF
-#define  RF69_MODE_STANDBY      1 // XTAL ON
+#define RF69_MODE_STANDBY       1 // XTAL ON
 #define RF69_MODE_SYNTH         2 // PLL ON
 #define RF69_MODE_RX            3 // RX MODE
 #define RF69_MODE_TX            4 // TX MODE

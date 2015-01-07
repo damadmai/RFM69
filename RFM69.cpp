@@ -61,16 +61,15 @@ void _rfm69_select(void);
 void _rfm69_unselect(void);
 inline static uint8_t _rfm69_transfer(uint8_t data);
 
-
 bool rfm69_initialize(uint8_t freqBand, uint8_t nodeID, uint8_t networkID)
 {
   const uint8_t CONFIG[][2] =
   {
     /* 0x01 */ { REG_OPMODE, RF_OPMODE_SEQUENCER_ON | RF_OPMODE_LISTEN_OFF | RF_OPMODE_STANDBY },
     /* 0x02 */ { REG_DATAMODUL, RF_DATAMODUL_DATAMODE_PACKET | RF_DATAMODUL_MODULATIONTYPE_FSK | RF_DATAMODUL_MODULATIONSHAPING_00 }, // no shaping
-    /* 0x03 */ { REG_BITRATEMSB, RF_BITRATEMSB_55555}, // default:4.8 KBPS
+    /* 0x03 */ { REG_BITRATEMSB, RF_BITRATEMSB_55555}, // default: 4.8 KBPS
     /* 0x04 */ { REG_BITRATELSB, RF_BITRATELSB_55555},
-    /* 0x05 */ { REG_FDEVMSB, RF_FDEVMSB_50000}, // default:5khz, (FDEV + BitRate/2 <= 500Khz)
+    /* 0x05 */ { REG_FDEVMSB, RF_FDEVMSB_50000}, // default: 5khz, (FDEV + BitRate/2 <= 500Khz)
     /* 0x06 */ { REG_FDEVLSB, RF_FDEVLSB_50000},
 
     /* 0x07 */ { REG_FRFMSB, (uint8_t)(freqBand==RF69_315MHZ ? RF_FRFMSB_315 : (freqBand==RF69_433MHZ ? RF_FRFMSB_433 : (freqBand==RF69_868MHZ ? RF_FRFMSB_868 : RF_FRFMSB_915))) },
@@ -79,9 +78,9 @@ bool rfm69_initialize(uint8_t freqBand, uint8_t nodeID, uint8_t networkID)
 
     // looks like PA1 and PA2 are not implemented on RFM69W, hence the max output power is 13dBm
     // +17dBm and +20dBm are possible on RFM69HW
-    // +13dBm formula: Pout=-18+OutputPower (with PA0 or PA1**)
-    // +17dBm formula: Pout=-14+OutputPower (with PA1 and PA2)**
-    // +20dBm formula: Pout=-11+OutputPower (with PA1 and PA2)** and high power PA settings (section 3.3.7 in datasheet)
+    // +13dBm formula: Pout = - 18 + OutputPower (with PA0 or PA1**)
+    // +17dBm formula: Pout = - 14 + OutputPower (with PA1 and PA2)**
+    // +20dBm formula: Pout = - 11 + OutputPower (with PA1 and PA2)** and high power PA settings (section 3.3.7 in datasheet)
     ///* 0x11 */ { REG_PALEVEL, RF_PALEVEL_PA0_ON | RF_PALEVEL_PA1_OFF | RF_PALEVEL_PA2_OFF | RF_PALEVEL_OUTPUTPOWER_11111},
     ///* 0x13 */ { REG_OCP, RF_OCP_ON | RF_OCP_TRIM_95 }, // over current protection (default is 95mA)
 
@@ -89,17 +88,17 @@ bool rfm69_initialize(uint8_t freqBand, uint8_t nodeID, uint8_t networkID)
     /* 0x19 */ { REG_RXBW, RF_RXBW_DCCFREQ_010 | RF_RXBW_MANT_16 | RF_RXBW_EXP_2 }, // (BitRate < 2 * RxBw)
     //for BR-19200: /* 0x19 */ { REG_RXBW, RF_RXBW_DCCFREQ_010 | RF_RXBW_MANT_24 | RF_RXBW_EXP_3 },
     /* 0x25 */ { REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_01 }, // DIO0 is the only IRQ we're using
-    /* 0x29 */ { REG_RSSITHRESH, 220 }, // must be set to dBm = (-Sensitivity / 2) - default is 0xE4=228 so -114dBm
-    ///* 0x2d */ { REG_PREAMBLELSB, RF_PREAMBLESIZE_LSB_VALUE } // default 3 preamble bytes 0xAAAAAA
-    /* 0x2e */ { REG_SYNCCONFIG, RF_SYNC_ON | RF_SYNC_FIFOFILL_AUTO | RF_SYNC_SIZE_2 | RF_SYNC_TOL_0 },
-    /* 0x2f */ { REG_SYNCVALUE1, 0x2D },      // attempt to make this compatible with sync1 byte of RFM12B lib
+    /* 0x29 */ { REG_RSSITHRESH, 220 }, // must be set to dBm = (- Sensitivity / 2) - default is 0xE4 = 228 so -114dBm
+    ///* 0x2D */ { REG_PREAMBLELSB, RF_PREAMBLESIZE_LSB_VALUE } // default 3 preamble bytes 0xAAAAAA
+    /* 0x2E */ { REG_SYNCCONFIG, RF_SYNC_ON | RF_SYNC_FIFOFILL_AUTO | RF_SYNC_SIZE_2 | RF_SYNC_TOL_0 },
+    /* 0x2F */ { REG_SYNCVALUE1, 0x2D },      // attempt to make this compatible with sync1 byte of RFM12B lib
     /* 0x30 */ { REG_SYNCVALUE2, networkID }, // NETWORK ID
     /* 0x37 */ { REG_PACKETCONFIG1, RF_PACKET1_FORMAT_VARIABLE | RF_PACKET1_DCFREE_OFF | RF_PACKET1_CRC_ON | RF_PACKET1_CRCAUTOCLEAR_ON | RF_PACKET1_ADRSFILTERING_OFF },
     /* 0x38 */ { REG_PAYLOADLENGTH, 66 }, // in variable length mode: the max frame size, not used in TX
     ///* 0x39 */ { REG_NODEADRS, nodeID }, // turned off because we're not using address filtering
     /* 0x3C */ { REG_FIFOTHRESH, RF_FIFOTHRESH_TXSTART_FIFONOTEMPTY | RF_FIFOTHRESH_VALUE }, // TX on FIFO not empty
-    /* 0x3d */ { REG_PACKETCONFIG2, RF_PACKET2_RXRESTARTDELAY_2BITS | RF_PACKET2_AUTORXRESTART_ON | RF_PACKET2_AES_OFF }, // RXRESTARTDELAY must match transmitter PA ramp-down time (bitrate dependent)
-    //for BR-19200: /* 0x3d */ { REG_PACKETCONFIG2, RF_PACKET2_RXRESTARTDELAY_NONE | RF_PACKET2_AUTORXRESTART_ON | RF_PACKET2_AES_OFF }, // RXRESTARTDELAY must match transmitter PA ramp-down time (bitrate dependent)
+    /* 0x3D */ { REG_PACKETCONFIG2, RF_PACKET2_RXRESTARTDELAY_2BITS | RF_PACKET2_AUTORXRESTART_ON | RF_PACKET2_AES_OFF }, // RXRESTARTDELAY must match transmitter PA ramp-down time (bitrate dependent)
+    //for BR-19200: /* 0x3D */ { REG_PACKETCONFIG2, RF_PACKET2_RXRESTARTDELAY_NONE | RF_PACKET2_AUTORXRESTART_ON | RF_PACKET2_AES_OFF }, // RXRESTARTDELAY must match transmitter PA ramp-down time (bitrate dependent)
     ///* 0x6F */ { REG_TESTDAGC, RF_DAGC_CONTINUOUS }, // run DAGC continuously in RX mode
     /* 0x6F */ { REG_TESTDAGC, RF_DAGC_IMPROVED_LOWBETA0 }, // run DAGC continuously in RX mode, recommended default for AfcLowBetaOn=0
     {255, 0}
@@ -112,7 +111,7 @@ bool rfm69_initialize(uint8_t freqBand, uint8_t nodeID, uint8_t networkID)
   DDR(RF69_SCK_PORT) |= (1<<RF69_SCK);
   DDR(RF69_SDI_PORT) |= (1<<RF69_SDI);
 
-  do rfm69_writeReg(REG_SYNCVALUE1, 0xaa); while (rfm69_readReg(REG_SYNCVALUE1) != 0xaa);
+  do rfm69_writeReg(REG_SYNCVALUE1, 0xAA); while (rfm69_readReg(REG_SYNCVALUE1) != 0xAA);
   do rfm69_writeReg(REG_SYNCVALUE1, 0x55); while (rfm69_readReg(REG_SYNCVALUE1) != 0x55);
 
   for (uint8_t i = 0; CONFIG[i][0] != 255; i++)
@@ -134,7 +133,7 @@ bool rfm69_initialize(uint8_t freqBand, uint8_t nodeID, uint8_t networkID)
 // return the frequency (in Hz)
 uint32_t rfm69_getFrequency(void)
 {
-  return RF69_FSTEP * (((uint32_t)rfm69_readReg(REG_FRFMSB)<<16) + ((uint16_t)rfm69_readReg(REG_FRFMID)<<8) + rfm69_readReg(REG_FRFLSB));
+  return RF69_FSTEP * (((uint32_t) rfm69_readReg(REG_FRFMSB) << 16) + ((uint16_t) rfm69_readReg(REG_FRFMID) << 8) + rfm69_readReg(REG_FRFLSB));
 }
 
 // set the frequency (in Hz)
@@ -194,7 +193,7 @@ void rfm69_setNetwork(uint8_t networkID)
   rfm69_writeReg(REG_SYNCVALUE2, networkID);
 }
 
-// set output power: 0=min, 31=max
+// set output power: 0 = min, 31 = max
 // this results in a "weaker" transmitted signal, and directly results in a lower RSSI at the receiver
 void rfm69_setPowerLevel(uint8_t powerLevel)
 {
@@ -216,7 +215,7 @@ void rfm69_send(uint8_t toAddress, const void* buffer, uint8_t bufferSize, bool 
 {
   rfm69_writeReg(REG_PACKETCONFIG2, (rfm69_readReg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
   unsigned long now = millis();
-  while (!rfm69_canSend() && millis()-now < RF69_CSMA_LIMIT_MS) rfm69_receiveDone();
+  while (!rfm69_canSend() && millis() - now < RF69_CSMA_LIMIT_MS) rfm69_receiveDone();
   _rfm69_sendFrame(toAddress, buffer, bufferSize, requestACK, false);
 }
 
@@ -225,22 +224,22 @@ void rfm69_send(uint8_t toAddress, const void* buffer, uint8_t bufferSize, bool 
 // The only twist is that you have to manually listen to ACK requests on the other side and send back the ACKs
 // The reason for the semi-automaton is that the lib is interrupt driven and
 // requires user action to read the received data and decide what to do with it
-// replies usually take only 5-8ms at 50kbps@915Mhz
+// replies usually take only 5..8ms at 50kbps@915Mhz
 bool rfm69_sendWithRetry(uint8_t toAddress, const void* buffer, uint8_t bufferSize, uint8_t retries, uint8_t retryWaitTime) {
   unsigned long sentTime;
   for (uint8_t i = 0; i <= retries; i++)
   {
     rfm69_send(toAddress, buffer, bufferSize, true);
     sentTime = millis();
-    while (millis()-sentTime<retryWaitTime)
+    while (millis() - sentTime < retryWaitTime)
     {
       if (rfm69_ACKReceived(toAddress))
       {
-        //Serial.print(" ~ms:");Serial.print(millis()-sentTime);
+        //Serial.print(" ~ms:"); Serial.print(millis() - sentTime);
         return true;
       }
     }
-    //Serial.print(" RETRY#");Serial.println(i+1);
+    //Serial.print(" RETRY#"); Serial.println(i+1);
   }
   return false;
 }
@@ -263,7 +262,7 @@ void rfm69_sendACK(const void* buffer, uint8_t bufferSize) {
   int _RSSI = rfm69_RSSI; // save payload received RSSI value
   rfm69_writeReg(REG_PACKETCONFIG2, (rfm69_readReg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
   unsigned long now = millis();
-  while (!rfm69_canSend() && millis()-now < RF69_CSMA_LIMIT_MS) rfm69_receiveDone();
+  while (!rfm69_canSend() && millis() - now < RF69_CSMA_LIMIT_MS) rfm69_receiveDone();
   _rfm69_sendFrame(sender, buffer, bufferSize, false, true);
   rfm69_RSSI = _RSSI; // restore payload RSSI
 }
@@ -290,13 +289,13 @@ void _rfm69_sendFrame(uint8_t toAddress, const void* buffer, uint8_t bufferSize,
   else _rfm69_transfer(0x00);
 
   for (uint8_t i = 0; i < bufferSize; i++)
-    _rfm69_transfer(((uint8_t*)buffer)[i]);
+    _rfm69_transfer(((uint8_t*) buffer)[i]);
   _rfm69_unselect();
 
   /* no need to wait for transmit mode to be ready since its handled by the radio */
   _rfm69_setMode(RF69_MODE_TX);
   unsigned long txStart = millis();
-  while (!(PIN(RF69_IRQ_PORT) & (1<<RF69_IRQ)) && millis()-txStart < RF69_TX_LIMIT_MS); // wait for DIO0 to turn HIGH signalling transmission finish
+  while (!(PIN(RF69_IRQ_PORT) & (1<<RF69_IRQ)) && millis() - txStart < RF69_TX_LIMIT_MS); // wait for DIO0 to turn HIGH signalling transmission finish
   //while (rfm69_readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PACKETSENT == 0x00); // wait for ModeReady
   _rfm69_setMode(RF69_MODE_STANDBY);
 }
@@ -307,7 +306,7 @@ void _rfm69_interruptHandler(void) {
     //_rfm69_RSSI = rfm69_readRSSI();
     _rfm69_setMode(RF69_MODE_STANDBY);
     _rfm69_select();
-    _rfm69_transfer(REG_FIFO & 0x7f);
+    _rfm69_transfer(REG_FIFO & 0x7F);
     rfm69_PAYLOADLEN = _rfm69_transfer(0);
     rfm69_PAYLOADLEN = rfm69_PAYLOADLEN > 66 ? 66 : rfm69_PAYLOADLEN; // precaution
     rfm69_TARGETID = _rfm69_transfer(0);
@@ -331,7 +330,7 @@ void _rfm69_interruptHandler(void) {
     {
       rfm69_DATA[i] = _rfm69_transfer(0);
     }
-    if (rfm69_DATALEN<RF69_MAX_DATA_LEN) rfm69_DATA[rfm69_DATALEN] = 0; // add null at end of string
+    if (rfm69_DATALEN < RF69_MAX_DATA_LEN) rfm69_DATA[rfm69_DATALEN] = 0; // add null at end of string
     _rfm69_unselect();
     _rfm69_setMode(RF69_MODE_RX);
   }
@@ -358,12 +357,12 @@ bool rfm69_receiveDone(void) {
 //ATOMIC_BLOCK(ATOMIC_FORCEON)
 //{
   noInterrupts(); // re-enabled in _rfm69_unselect() via _rfm69_setMode() or via _rfm69_receiveBegin()
-  if (_mode == RF69_MODE_RX && rfm69_PAYLOADLEN>0)
+  if (_mode == RF69_MODE_RX && rfm69_PAYLOADLEN > 0)
   {
     _rfm69_setMode(RF69_MODE_STANDBY); // enables interrupts
     return true;
   }
-  else if (_mode == RF69_MODE_RX)  // already in RX no payload yet
+  else if (_mode == RF69_MODE_RX) // already in RX no payload yet
   {
     interrupts(); // explicitly re-enable interrupts
     return false;
@@ -397,7 +396,7 @@ int rfm69_readRSSI(bool forceTrigger) {
     rfm69_writeReg(REG_RSSICONFIG, RF_RSSI_START);
     while ((rfm69_readReg(REG_RSSICONFIG) & RF_RSSI_DONE) == 0x00); // wait for RSSI_Ready
   }
-  rssi = -rfm69_readReg(REG_RSSIVALUE);
+  rssi = - rfm69_readReg(REG_RSSIVALUE);
   rssi >>= 1;
   return rssi;
 }
@@ -426,7 +425,7 @@ void _rfm69_select(void) {
   _SPCR = SPCR;
   _SPSR = SPSR;
   // set RFM69 SPI settings
-  SPCR &= ~( (1<<DORD)|(1<<SPR1)|(1<<SPR0) );
+  SPCR &= ~( (1<<DORD) | (1<<SPR1) | (1<<SPR0) );
   SPSR &= ~(1<<SPI2X);
   // decided to slow down from DIV2 after SPI stalling in some instances, especially visible on mega1284p when RFM69 and FLASH chip both present
   PORT(RF69_CS_PORT) &= ~(1<<RF69_CS);
@@ -444,7 +443,7 @@ void _rfm69_unselect(void) {
 inline static uint8_t _rfm69_transfer(uint8_t data) {
 	SPDR = data;
 	asm volatile("nop");
-	while (!(SPSR & (1<<SPIF))) ; // wait
+	while ( !(SPSR & (1<<SPIF)) ) ; // wait
 	data = SPDR;
 
 	return data;
@@ -479,7 +478,7 @@ void rfm69_readAllRegs(void)
   for (uint8_t regAddr = 1; regAddr <= 0x4F; regAddr++)
   {
     _rfm69_select();
-    _rfm69_transfer(regAddr & 0x7f); // send address + r/w bit
+    _rfm69_transfer(regAddr & 0x7F); // send address + r/w bit
     regVal = _rfm69_transfer(0);
     _rfm69_unselect();
 
