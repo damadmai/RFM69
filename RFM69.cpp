@@ -59,6 +59,8 @@ void _rfm69_setMode(uint8_t mode);
 void _rfm69_setHighPowerRegs(bool onOff);
 void _rfm69_select(void);
 void _rfm69_unselect(void);
+inline static uint8_t _rfm69_transfer(uint8_t data);
+
 
 bool rfm69_initialize(uint8_t freqBand, uint8_t nodeID, uint8_t networkID)
 {
@@ -103,8 +105,12 @@ bool rfm69_initialize(uint8_t freqBand, uint8_t nodeID, uint8_t networkID)
     {255, 0}
   };
 
+  PORT(RF69_CS_PORT) |= (1<<RF69_CS);
   DDR(RF69_CS_PORT) |= (1<<RF69_CS);
-  SPI.begin();
+  SPCR |= (1<<MSTR);
+  SPCR |= (1<<SPE);
+  DDR(RF69_SCK_PORT) |= (1<<RF69_SCK);
+  DDR(RF69_SDI_PORT) |= (1<<RF69_SDI);
 
   do rfm69_writeReg(REG_SYNCVALUE1, 0xaa); while (rfm69_readReg(REG_SYNCVALUE1) != 0xaa);
   do rfm69_writeReg(REG_SYNCVALUE1, 0x55); while (rfm69_readReg(REG_SYNCVALUE1) != 0x55);
@@ -271,20 +277,20 @@ void _rfm69_sendFrame(uint8_t toAddress, const void* buffer, uint8_t bufferSize,
 
   // write to FIFO
   _rfm69_select();
-  SPI.transfer(REG_FIFO | 0x80);
-  SPI.transfer(bufferSize + 3);
-  SPI.transfer(toAddress);
-  SPI.transfer(_address);
+  _rfm69_transfer(REG_FIFO | 0x80);
+  _rfm69_transfer(bufferSize + 3);
+  _rfm69_transfer(toAddress);
+  _rfm69_transfer(_address);
 
   // control byte
   if (sendACK)
-    SPI.transfer(0x80);
+    _rfm69_transfer(0x80);
   else if (requestACK)
-    SPI.transfer(0x40);
-  else SPI.transfer(0x00);
+    _rfm69_transfer(0x40);
+  else _rfm69_transfer(0x00);
 
   for (uint8_t i = 0; i < bufferSize; i++)
-    SPI.transfer(((uint8_t*)buffer)[i]);
+    _rfm69_transfer(((uint8_t*)buffer)[i]);
   _rfm69_unselect();
 
   /* no need to wait for transmit mode to be ready since its handled by the radio */
@@ -301,10 +307,10 @@ void _rfm69_interruptHandler(void) {
     //_rfm69_RSSI = rfm69_readRSSI();
     _rfm69_setMode(RF69_MODE_STANDBY);
     _rfm69_select();
-    SPI.transfer(REG_FIFO & 0x7f);
-    rfm69_PAYLOADLEN = SPI.transfer(0);
+    _rfm69_transfer(REG_FIFO & 0x7f);
+    rfm69_PAYLOADLEN = _rfm69_transfer(0);
     rfm69_PAYLOADLEN = rfm69_PAYLOADLEN > 66 ? 66 : rfm69_PAYLOADLEN; // precaution
-    rfm69_TARGETID = SPI.transfer(0);
+    rfm69_TARGETID = _rfm69_transfer(0);
     if(!(_promiscuousMode || rfm69_TARGETID == _address || rfm69_TARGETID == RF69_BROADCAST_ADDR) // match this node's address, or broadcast address or anything in promiscuous mode
        || rfm69_PAYLOADLEN < 3) // address situation could receive packets that are malformed and don't fit this libraries extra fields
     {
@@ -315,15 +321,15 @@ void _rfm69_interruptHandler(void) {
     }
 
     rfm69_DATALEN = rfm69_PAYLOADLEN - 3;
-    rfm69_SENDERID = SPI.transfer(0);
-    uint8_t CTLbyte = SPI.transfer(0);
+    rfm69_SENDERID = _rfm69_transfer(0);
+    uint8_t CTLbyte = _rfm69_transfer(0);
 
     rfm69_ACK_RECEIVED = CTLbyte & 0x80; // extract ACK-received flag
     rfm69_ACK_REQUESTED = CTLbyte & 0x40; // extract ACK-requested flag
 
     for (uint8_t i = 0; i < rfm69_DATALEN; i++)
     {
-      rfm69_DATA[i] = SPI.transfer(0);
+      rfm69_DATA[i] = _rfm69_transfer(0);
     }
     if (rfm69_DATALEN<RF69_MAX_DATA_LEN) rfm69_DATA[rfm69_DATALEN] = 0; // add null at end of string
     _rfm69_unselect();
@@ -375,9 +381,9 @@ void rfm69_encrypt(const char* key) {
   if (key != 0)
   {
     _rfm69_select();
-    SPI.transfer(REG_AESKEY1 | 0x80);
+    _rfm69_transfer(REG_AESKEY1 | 0x80);
     for (uint8_t i = 0; i < 16; i++)
-      SPI.transfer(key[i]);
+      _rfm69_transfer(key[i]);
     _rfm69_unselect();
   }
   rfm69_writeReg(REG_PACKETCONFIG2, (rfm69_readReg(REG_PACKETCONFIG2) & 0xFE) | (key ? 1 : 0));
@@ -399,8 +405,8 @@ int rfm69_readRSSI(bool forceTrigger) {
 uint8_t rfm69_readReg(uint8_t addr)
 {
   _rfm69_select();
-  SPI.transfer(addr & 0x7F);
-  uint8_t regval = SPI.transfer(0);
+  _rfm69_transfer(addr & 0x7F);
+  uint8_t regval = _rfm69_transfer(0);
   _rfm69_unselect();
   return regval;
 }
@@ -408,8 +414,8 @@ uint8_t rfm69_readReg(uint8_t addr)
 void rfm69_writeReg(uint8_t addr, uint8_t value)
 {
   _rfm69_select();
-  SPI.transfer(addr | 0x80);
-  SPI.transfer(value);
+  _rfm69_transfer(addr | 0x80);
+  _rfm69_transfer(value);
   _rfm69_unselect();
 }
 
@@ -420,9 +426,9 @@ void _rfm69_select(void) {
   _SPCR = SPCR;
   _SPSR = SPSR;
   // set RFM69 SPI settings
-  SPI.setDataMode(SPI_MODE0);
-  SPI.setBitOrder(MSBFIRST);
-  SPI.setClockDivider(SPI_CLOCK_DIV4); // decided to slow down from DIV2 after SPI stalling in some instances, especially visible on mega1284p when RFM69 and FLASH chip both present
+  SPCR &= ~( (1<<DORD)|(1<<SPR1)|(1<<SPR0) );
+  SPSR &= ~(1<<SPI2X);
+  // decided to slow down from DIV2 after SPI stalling in some instances, especially visible on mega1284p when RFM69 and FLASH chip both present
   PORT(RF69_CS_PORT) &= ~(1<<RF69_CS);
 }
 
@@ -433,6 +439,15 @@ void _rfm69_unselect(void) {
   SPCR = _SPCR;
   SPSR = _SPSR;
   interrupts();
+}
+
+inline static uint8_t _rfm69_transfer(uint8_t data) {
+	SPDR = data;
+	asm volatile("nop");
+	while (!(SPSR & (1<<SPIF))) ; // wait
+	data = SPDR;
+
+	return data;
 }
 
 // ON  = disable filtering to capture all frames on network
@@ -464,8 +479,8 @@ void rfm69_readAllRegs(void)
   for (uint8_t regAddr = 1; regAddr <= 0x4F; regAddr++)
   {
     _rfm69_select();
-    SPI.transfer(regAddr & 0x7f); // send address + r/w bit
-    regVal = SPI.transfer(0);
+    _rfm69_transfer(regAddr & 0x7f); // send address + r/w bit
+    regVal = _rfm69_transfer(0);
     _rfm69_unselect();
 
     Serial.print(regAddr, HEX);
