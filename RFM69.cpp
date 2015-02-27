@@ -427,14 +427,16 @@ void RFM69::writeReg(uint8_t addr, uint8_t value)
 
 // select the transceiver
 void RFM69::select() {
+#ifndef SPI_HAS_TRANSACTION
+  _SREG = SREG;
+  noInterrupts();
+#endif
   // save current SPI settings
   _SPCR = SPCR;
   _SPSR = SPSR;
-  _SREG = SREG;
 #ifdef SPI_HAS_TRANSACTION
   SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE0));
 #else
-  noInterrupts();
   // set RFM69 SPI settings
   SPI.setDataMode(SPI_MODE0);
   SPI.setBitOrder(MSBFIRST);
@@ -446,14 +448,14 @@ void RFM69::select() {
 // UNselect the transceiver chip
 void RFM69::unselect() {
   digitalWrite(_slaveSelectPin, HIGH);
+  // restore SPI settings to what they were before talking to RFM69
+  SPCR = _SPCR;
+  SPSR = _SPSR;
 #ifdef SPI_HAS_TRANSACTION
   SPI.endTransaction();
 #else  
   SREG = _SREG;
 #endif
-  // restore SPI settings to what they were before talking to RFM69
-  SPCR = _SPCR;
-  SPSR = _SPSR;
 }
 
 // ON  = disable filtering to capture all frames on network

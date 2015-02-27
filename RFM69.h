@@ -132,7 +132,9 @@ class RFM69 {
     bool _isRFM69HW;
     uint8_t _SPCR;
     uint8_t _SPSR;
+#ifndef SPI_HAS_TRANSACTION
     uint8_t _SREG;
+#endif
 
     void receiveBegin();
     void setMode(uint8_t mode);
